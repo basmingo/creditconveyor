@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "ru.neoflex.credit.conveyor";
+
+package akka2grpc;
+
+message LoanRequest {
+  string firstName = 1;
+  string lastName = 2;
+  string amount = 3;
+  int32 term = 4;
+  google.protobuf.Timestamp birthday = 5;
+  string email = 6;
+  int32 passportSeries = 7;
+  int32 passportNumber = 8;
+}
+
+message LoanResponse {
+  string id = 1;
+  string requestedAmount = 2;
+  string totalAmount = 3;
+  int32 term = 4;
+  string monthlyPayment = 5;
+  string rate = 6;
+  bool isInsuranceEnabled = 7;
+  bool isSalaryClient = 8;
+}
+
+service OfferProtoService {
+  rpc makeOffers(LoanRequest) returns (stream LoanResponse) {}
+}
