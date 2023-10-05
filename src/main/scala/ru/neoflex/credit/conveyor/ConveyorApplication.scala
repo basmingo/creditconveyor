@@ -1,13 +1,12 @@
 package ru.neoflex.credit.conveyor
 
-import akka.actor.ActorSystem
-import ru.neoflex.credit.conveyor.service.CreditConveyorServer
+import ru.neoflex.credit.conveyor.service.OfferProtoService
+import scalapb.zio_grpc.{ServerMain, ServiceList}
+import zio.{Ref, ZIO}
 
-import scala.concurrent.ExecutionContextExecutor
+object ConveyorApplication extends ServerMain {
+  override def port: Int = 8090
 
-object ConveyorApplication extends App {
-  implicit val system: ActorSystem = ActorSystem("my-system")
-
-  val creditConveyorServer = new CreditConveyorServer()
-  creditConveyorServer.startServer
+  val s: ZIO[Any, Throwable, OfferProtoService.type] = ZIO.from(OfferProtoService)
+  override def services: ServiceList[Any] = ServiceList.addZIO(s)
 }

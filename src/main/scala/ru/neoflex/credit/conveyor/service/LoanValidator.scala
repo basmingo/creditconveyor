@@ -1,33 +1,24 @@
 package ru.neoflex.credit.conveyor.service
 
-import ru.neoflex.credit.conveyor.LoanRequest
-import zio.{Chunk, NonEmptyChunk, ULayer, ZIO, ZLayer}
+import ru.neoflex.credit.conveyor.OfferProtoService.LoanRequest
+import zio.{Chunk, NonEmptyChunk, Ref, ULayer, ZIO, ZLayer}
 import zio.prelude.Validation
 import zio.prelude.ZValidation.Failure
 
 import java.time.Instant
 
-trait LoanValidator {
-  def validateLoanRequest(request: LoanRequest): Validation[String, LoanRequest]
-}
-
 object LoanValidator {
-  def validateLoanRequest(request: LoanRequest) =
-    ZIO.serviceWith(validateLoanRequest(request))
-
-  val live: ULayer[LoanValidator] = ZLayer.succeed(new LoanValidator {
-    override def validateLoanRequest(request: LoanRequest): Validation[String, LoanRequest] = {
-      for {
-        name <- validateName(request)
-        lastName <- validateLastName(name)
-        email <- validateEmail(lastName)
-        birthday <- validateBirthday(email)
-        series <- validatePassportSeries(birthday)
-        number <- validatePassportNumber(series)
-        result <- validateAmount(number)
-      } yield result
-    }
-  })
+  def validateLoanRequest(request: LoanRequest): Validation[String, LoanRequest] = {
+    for {
+      name <- validateName(request)
+      lastName <- validateLastName(name)
+      email <- validateEmail(lastName)
+      birthday <- validateBirthday(email)
+      series <- validatePassportSeries(birthday)
+      number <- validatePassportNumber(series)
+      result <- validateAmount(number)
+    } yield result
+  }
 
   private def validateName(request: LoanRequest): Validation[String, LoanRequest] = {
     val name: String = request.firstName
