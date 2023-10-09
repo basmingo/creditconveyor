@@ -16,7 +16,8 @@ object LoanValidator {
       birthday <- validateBirthday(email)
       series <- validatePassportSeries(birthday)
       number <- validatePassportNumber(series)
-      result <- validateAmount(number)
+      term <- validateTerm(number)
+      result <- validateAmount(term)
     } yield result
   }
 
@@ -63,5 +64,10 @@ object LoanValidator {
   private def validatePassportNumber(request: LoanRequest): Validation[String, LoanRequest] = {
     Validation.fromPredicateWith("passport number can consists only from 6 digits")(request)(_ =>
       request.passportNumber.toString.length == 6)
+  }
+
+  private def validateTerm(request: LoanRequest): Validation[String, LoanRequest] = {
+    Validation.fromPredicateWith("term should be more than 0")(request)(_ =>
+      request.term > 0)
   }
 }
