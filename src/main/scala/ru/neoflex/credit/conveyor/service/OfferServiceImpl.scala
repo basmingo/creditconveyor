@@ -3,35 +3,34 @@ package ru.neoflex.credit.conveyor.service
 import io.grpc.{Status, StatusException}
 import ru.neoflex.credit.conveyor.OfferProtoService.ZioOfferProtoService.OfferProtoService
 import ru.neoflex.credit.conveyor.OfferProtoService.{LoanRequest, LoanResponse}
+import ru.neoflex.credit.conveyor.config.CreditPercentages
 import ru.neoflex.credit.conveyor.service.utils.LoanCalculationUtils
+import zio.stream
 import zio.stream.ZStream
-import zio.{ZIO, ZLayer, stream}
 
 import java.util.UUID
 
-case class OfferServiceImpl(loanCalculationUtils: LoanCalculationUtils) extends OfferProtoService {
-  private val BASE_CREDIT_PERCENTAGE: BigDecimal = 0.15
-
+case class OfferServiceImpl(loanCalculationUtils: LoanCalculationUtils, loanValidator: LoanValidator) extends OfferProtoService {
   def makeOffers(request: LoanRequest): stream.Stream[StatusException, LoanResponse] = {
-    LoanValidator.validateLoanRequest(request).fold(
+    loanValidator.validateLoanRequest(request).fold(
       error => ZStream.fail(new StatusException(
         Status.INVALID_ARGUMENT
           .augmentDescription(error.head))),
       _ => ZStream.fromIterable(
         List(
-          makeLoanOffer(request, BASE_CREDIT_PERCENTAGE, isInsuranceEnabled = false, isSalaryClient = false),
-          makeLoanOffer(request, BASE_CREDIT_PERCENTAGE - 0.01, isInsuranceEnabled = false, isSalaryClient = true),
-          makeLoanOffer(request, BASE_CREDIT_PERCENTAGE - 0.05, isInsuranceEnabled = true, isSalaryClient = false),
-          makeLoanOffer(request, BASE_CREDIT_PERCENTAGE - 0.06, isInsuranceEnabled = true, isSalaryClient = true)
+          makeLoanOffer(request, CreditPercentages.baseRate, isInsuranceEnabled = false, isSalaryClient = false),
+          makeLoanOffer(request, CreditPercentages.baseRate - 0.01, isInsuranceEnabled = false, isSalaryClient = true),
+          makeLoanOffer(request, CreditPercentages.baseRate - 0.05, isInsuranceEnabled = true, isSalaryClient = false),
+          makeLoanOffer(request, CreditPercentages.baseRate - 0.06, isInsuranceEnabled = true, isSalaryClient = true)
         )
       )
     )
   }
 
-  def makeLoanOffer(request: LoanRequest,
-                    rate: BigDecimal,
-                    isInsuranceEnabled: Boolean,
-                    isSalaryClient: Boolean): LoanResponse = {
+  private def makeLoanOffer(request: LoanRequest,
+                            rate: BigDecimal,
+                            isInsuranceEnabled: Boolean,
+                            isSalaryClient: Boolean): LoanResponse = {
 
     val totalAmount = loanCalculationUtils.getTotalAmount(
       request.term,
@@ -52,13 +51,5 @@ case class OfferServiceImpl(loanCalculationUtils: LoanCalculationUtils) extends 
       rate.toString,
       isInsuranceEnabled,
       isSalaryClient)
-  }
-}
-
-object OfferServiceImpl {
-  val layer: ZLayer[LoanCalculationUtils, Nothing, OfferProtoService] = ZLayer {
-    for {
-      utils <- ZIO.service[LoanCalculationUtils]
-    } yield OfferServiceImpl(utils)
   }
 }

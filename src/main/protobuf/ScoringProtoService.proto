@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "ru.neoflex.credit.conveyor";
+
+package akka2grpc;
+
+message ScoringRequest {
+  string amount = 1;
+  int32 term = 2;
+  string firstName = 3;
+  string lastName = 4;
+  string middleName = 5;
+  Gender gender = 6;
+  google.protobuf.Timestamp birthdate = 7;
+  int32 passportSeries = 8;
+  int32 passportNumber = 9;
+  google.protobuf.Timestamp passportIssueDate = 10;
+  string passportIssueBranch = 11;
+  MaterialStatus materialStatus = 12;
+  int32 dependentAmount = 13;
+  Employment employment = 14;
+  string account = 15;
+  bool isInsuranceEnabled = 16;
+  bool isSalaryClient = 17;
+}
+
+message Employment {
+  EmploymentStatus employmentStatus = 1;
+  string employerINN = 2;
+  string salary = 3;
+  Position position = 4;
+  int32 workExperienceTotal = 5;
+  int32 workExperienceCurrent = 6;
+}
+
+enum Position {
+  CEO = 0;
+  MANAGER = 2;
+  SUPERVISOR = 3;
+  TEAM_LEAD = 4;
+  TOP_MANAGER = 5;
+  EMPLOYEE = 6;
+}
+
+enum Gender {
+  MALE = 0;
+  FEMALE = 1;
+  NON_BINARY = 2;
+}
+
+enum MaterialStatus {
+  SINGLE = 0;
+  MARRIED = 1;
+  DIVORCED = 2;
+  WIDOWED = 3;
+  SEPARATE = 4;
+}
+
+enum EmploymentStatus {
+  UNEMPLOYED = 0;
+  EMPLOYED = 1;
+  SELF_EMPLOYED = 2;
+  BUSINESS_OWNER = 3;
+}
+
+message Credit {
+  string amount = 1;
+  int32 term = 2;
+  string monthlyPayment = 3;
+  string rate = 4;
+  string psk = 5;
+  bool isInsuranceEnabled = 6;
+  bool isSalaryClient = 7;
+  repeated PaymentSchedule paymentSchedule = 8;
+}
+
+message PaymentSchedule {
+  int32 number = 1;
+  google.protobuf.Timestamp date = 2;
+  string totalPayment = 3;
+  string interestPayment = 4;
+  string debtPayment = 5;
+  string remainingDebt = 6;
+}
+
+
+service ScoringProtoService {
+  rpc scoreData(ScoringRequest) returns (Credit) {}
+}

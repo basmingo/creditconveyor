@@ -1,13 +1,18 @@
 package ru.neoflex.credit.conveyor.service
 
 import ru.neoflex.credit.conveyor.OfferProtoService.LoanRequest
-import zio.{Chunk, NonEmptyChunk, Ref, ULayer, ZIO, ZLayer}
+import ru.neoflex.credit.conveyor.service.utils.{ScoringUtils, ScoringUtilsImpl}
 import zio.prelude.Validation
 import zio.prelude.ZValidation.Failure
+import zio.{Chunk, NonEmptyChunk, ULayer, ZIO, ZLayer}
 
 import java.time.Instant
 
-object LoanValidator {
+trait LoanValidator {
+  def validateLoanRequest(request: LoanRequest): Validation[String, LoanRequest]
+}
+
+case class LoanValidatorImpl(scoringUtils: ScoringUtils) extends LoanValidator {
   def validateLoanRequest(request: LoanRequest): Validation[String, LoanRequest] = {
     for {
       name <- validateName(request)
@@ -46,28 +51,31 @@ object LoanValidator {
   }
 
   private def validateBirthday(request: LoanRequest): Validation[String, LoanRequest] = {
-    val currentDate = Instant.now()
-    val reference = currentDate.minusSeconds(5.68e+8.toLong)
     request.birthday match {
       case Some(date) =>
         Validation.fromPredicateWith("birthday is not valid")(request)(_ =>
-          Instant.ofEpochSecond(date.seconds, date.nanos).isBefore(reference))
+          scoringUtils.clientIsYoungerThan(date, 18))
       case _ => Failure(Chunk.empty, NonEmptyChunk("no birthday is presented"))
     }
   }
 
-  private def validatePassportSeries(request: LoanRequest): Validation[String, LoanRequest] = {
+  private def validatePassportSeries(request: LoanRequest): Validation[String, LoanRequest] =
     Validation.fromPredicateWith("passport series can consists only from 4 digits")(request)(_ =>
       request.passportSeries.toString.length == 4)
-  }
 
-  private def validatePassportNumber(request: LoanRequest): Validation[String, LoanRequest] = {
+  private def validatePassportNumber(request: LoanRequest): Validation[String, LoanRequest] =
     Validation.fromPredicateWith("passport number can consists only from 6 digits")(request)(_ =>
       request.passportNumber.toString.length == 6)
-  }
 
-  private def validateTerm(request: LoanRequest): Validation[String, LoanRequest] = {
+  private def validateTerm(request: LoanRequest): Validation[String, LoanRequest] =
     Validation.fromPredicateWith("term should be more than 0")(request)(_ =>
       request.term > 0)
+}
+
+object LoanValidatorImpl {
+  val layer: ZLayer[ScoringUtils, Nothing, LoanValidatorImpl] = ZLayer {
+    for {
+      utils <- ZIO.service[ScoringUtils]
+    } yield LoanValidatorImpl(utils)
   }
 }

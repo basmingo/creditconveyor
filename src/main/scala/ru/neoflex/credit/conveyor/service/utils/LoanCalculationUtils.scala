@@ -1,6 +1,6 @@
 package ru.neoflex.credit.conveyor.service.utils
 
-import zio.{ULayer, URIO, ZIO, ZLayer}
+import zio.{ULayer, ZLayer}
 
 trait LoanCalculationUtils {
 
