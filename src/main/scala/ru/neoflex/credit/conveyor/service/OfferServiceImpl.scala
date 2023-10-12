@@ -32,15 +32,10 @@ case class OfferServiceImpl(loanCalculationUtils: LoanCalculationUtils, loanVali
                             isInsuranceEnabled: Boolean,
                             isSalaryClient: Boolean): LoanResponse = {
 
-    val totalAmount = loanCalculationUtils.getTotalAmount(
-      request.term,
-      rate,
-      BigDecimal(request.amount),
-      isInsuranceEnabled)
-
-    val monthlyPayment = loanCalculationUtils.getAnnuityCoefficient(
-      request.term,
-      loanCalculationUtils.getMonthlyRate(rate)) * BigDecimal(request.amount)
+    val totalAmount = loanCalculationUtils
+      .getTotalAmount(request.term, rate, BigDecimal(request.amount), isInsuranceEnabled)
+    val monthlyPayment = loanCalculationUtils
+      .getAnnuityCoefficient(request.term, loanCalculationUtils.getMonthlyRate(rate)) * BigDecimal(request.amount)
 
     LoanResponse(
       UUID.randomUUID().toString,

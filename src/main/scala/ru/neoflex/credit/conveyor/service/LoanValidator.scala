@@ -54,7 +54,7 @@ case class LoanValidatorImpl(scoringUtils: ScoringUtils) extends LoanValidator {
     request.birthday match {
       case Some(date) =>
         Validation.fromPredicateWith("birthday is not valid")(request)(_ =>
-          scoringUtils.clientIsYoungerThan(date, 18))
+          scoringUtils.clientIsOlderThan(date, 18))
       case _ => Failure(Chunk.empty, NonEmptyChunk("no birthday is presented"))
     }
   }

@@ -23,7 +23,7 @@ case class ScoringUtilsImpl() extends ScoringUtils {
   override def clientIsYoungerThan(birthdate: Timestamp, age: Int): Boolean =
     Instant
       .ofEpochSecond(birthdate.seconds, birthdate.nanos)
-      .isBefore(getDateByYearsAgo(age))
+      .isAfter(getDateByYearsAgo(age))
 
   private def getDateByYearsAgo(years: Int): Instant =
     Instant.now.minusSeconds(secondsPerYear * years)
