@@ -11,23 +11,21 @@ import zio.{IO, ZIO}
 import java.time.{Duration, Instant}
 
 case class ScoringServiceImpl(scoringUtils: ScoringUtils, loanCalculationUtils: LoanCalculationUtils)
-  extends ScoringProtoService {
+    extends ScoringProtoService {
   override def scoreData(request: ScoringRequest): IO[StatusException, Credit] = {
-    println(Instant.ofEpochSecond(request.birthdate.get.seconds, request.birthdate.get.nanos))
-    ZIO.succeed(Credit())
     for {
-      validRequest <- validateRequest(request)
+      validRequest  <- validateRequest(request)
       calculateRate <- calculateRate(validRequest)
-      created <- creditResp(request, calculateRate)
+      created       <- creditResp(request, calculateRate)
     } yield created
   }
 
   private def creditResp(request: ScoringRequest, inputRate: BigDecimal): IO[StatusException, Credit] =
-    ZIO.succeed(loanCalculationUtils.getTotalAmount(
-      request.term,
-      inputRate,
-      BigDecimal(request.amount),
-      request.isInsuranceEnabled))
+    ZIO
+      .succeed(
+        loanCalculationUtils
+          .getTotalAmount(request.term, inputRate, BigDecimal(request.amount), request.isInsuranceEnabled)
+      )
       .map(totalAmount =>
         Credit(
           amount = request.amount,
@@ -37,13 +35,13 @@ case class ScoringServiceImpl(scoringUtils: ScoringUtils, loanCalculationUtils: 
           psk = "???",
           isInsuranceEnabled = request.isInsuranceEnabled,
           isSalaryClient = request.isSalaryClient,
-          paymentSchedule = makeSchedules(request, totalAmount))
+          paymentSchedule = makeSchedules(request, totalAmount)
+        )
       )
 
   private def makeSchedules(request: ScoringRequest, totalPayment: BigDecimal): Seq[PaymentSchedule] =
     (0 until request.term)
-      .map(it =>
-        (it, Instant.now.plus(Duration.ofDays(30 * it)), totalPayment / request.term))
+      .map(it => (it, Instant.now.plus(Duration.ofDays(30 * it)), totalPayment / request.term))
       .map(it =>
         PaymentSchedule(
           it._1 + 1,
@@ -51,27 +49,31 @@ case class ScoringServiceImpl(scoringUtils: ScoringUtils, loanCalculationUtils: 
           totalPayment.toString,
           it._3.toString,
           (it._3 * it._1).toString,
-          (it._3 * (request.term - it._1)).toString)
+          (it._3 * (request.term - it._1)).toString
+        )
       )
 
   private def validateRequest(request: ScoringRequest): ZIO[Any, StatusException, ScoringRequest] =
-    ZIO.succeed(request)
+    ZIO
+      .succeed(request)
       .filterOrFail(_.birthdate.isDefined)(Status.INVALID_ARGUMENT)
-      .filterOrFail(req =>
-        scoringUtils.clientIsOlderThan(req.birthdate.get, 20))(Status.INVALID_ARGUMENT)
-      .filterOrFail(req =>
-        scoringUtils.clientIsYoungerThan(req.birthdate.get, 60))(Status.INVALID_ARGUMENT)
+      .filterOrFail(req => scoringUtils.clientIsOlderThan(req.birthdate.get, 20))(Status.INVALID_ARGUMENT)
+      .filterOrFail(req => scoringUtils.clientIsYoungerThan(req.birthdate.get, 60))(Status.INVALID_ARGUMENT)
       .filterOrFail(_.employment.isDefined)(Status.INVALID_ARGUMENT)
-      .filterOrFail(req =>
-        (BigDecimal(req.employment.get.salary) * req.term) > BigDecimal(req.amount))(Status.INVALID_ARGUMENT)
+      .filterOrFail(req => (BigDecimal(req.employment.get.salary) * req.term) > BigDecimal(req.amount))(
+        Status.INVALID_ARGUMENT
+      )
       .filterOrFail(_.employment.get.workExperienceTotal > 12)(Status.INVALID_ARGUMENT)
       .filterOrFail(_.employment.get.workExperienceCurrent > 3)(Status.INVALID_ARGUMENT)
       .mapError(error => new StatusException(error))
 
   private def calculateRate(request: ScoringRequest): ZIO[Any, Nothing, BigDecimal] =
-    ZIO.succeed(CreditPercentages.baseRate)
+    ZIO
+      .succeed(CreditPercentages.baseRate)
       .map(rate => if (request.employment.get.employmentStatus == EmploymentStatus.UNEMPLOYED) rate + 0.01 else rate)
-      .map(rate => if (request.employment.get.employmentStatus == EmploymentStatus.BUSINESS_OWNER) rate + 0.03 else rate)
+      .map(rate =>
+        if (request.employment.get.employmentStatus == EmploymentStatus.BUSINESS_OWNER) rate + 0.03 else rate
+      )
       .map(rate => if (PositionFilter.middleManagers.contains(request.employment.get.position)) rate - 0.02d else rate)
       .map(rate => if (PositionFilter.topManagers.contains(request.employment.get.position)) rate - 0.04d else rate)
       .map(rate => if (request.materialStatus == MaterialStatus.MARRIED) rate - 0.03 else rate)
